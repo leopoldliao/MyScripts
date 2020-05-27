@@ -47,7 +47,7 @@ awk -v filename=$1 '
                 # give velocity (-1, 0, 0) for another water ball
                 x = substr($0, 21, 8)+10  # plus 10 nm in X axis
                 frontx = substr($0, 1, 20)
-                afterx_and_frontvx = substr($0, 29, 44)
+                afterx_and_frontvx = substr($0, 29, 16)
                 printf("%s%8.3f%s%8.4f%8.4f%8.4f\n", frontx, x, afterx_and_frontvx, -1, 0, 0)
             }
         }
