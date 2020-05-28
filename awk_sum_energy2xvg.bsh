@@ -1,0 +1,121 @@
+#!/bin/bash
+# A bash script for generating main xvg file from output energy file(summary_energy.dat), in order to plot it
+# by using xmgrace/qtgrace
+
+############################################################################
+#                     Author : Written by Yujie Liu                        #
+#                        Email : 1051690424@qq.com                         #
+#                             Version : 1.0                                #
+#                           Date : 2020.04.01                              #
+############################################################################
+
+#=========================HELP INFORMATION==============================#
+Usage() {
+    echo "
+    Usage: $0 Options
+        -h    Show help information
+        -f    Input, Final Energy File: Full Summary of energy components(default: summary_energy.dat)
+    "
+}
+#+++++++++++++++++++++++++++DEFAULT PARAMETERS+++++++++++++++++++++++++#
+inputsum="summary_energy.dat"
+
+[[ $# -lt 1 ]] && { Usage; exit 1; }
+options=($@); N=${#options[@]}
+for((i = 0; i < N; i++));do
+    arg=${options[$i]}; j=$((i+1))
+    [[ $arg =~ -h ]] && { Usage; exit 2; }
+    [[ $arg =~ -f ]]  && { inputsum=${options[$j]}; }
+done
+
+awk '
+    BEGIN {
+        RS = "\r?\n"
+        inputsum = "'$inputsum'"
+        CheckFile(inputsum)
+        PrintSumXvg()
+    }
+    
+    function CheckFile(file1) {
+        if(getline < file1 < 0) {
+            printf("Error:\n\tInput file(%s) not found! Please check!\n", file1)
+            exit 5
+        }
+        close(file1)
+    }
+    
+    function HeadXvg(Term) {
+        printf("@map color 10 to (255, 0, 255), \"magenta\"\n")
+        printf("@    xaxis  label \"\"\n") 
+        printf("@    yaxis  label \"Energy (kJ/mol)\"\n") 
+        printf("@TYPE bardy\n") 
+        printf("@ view 0.15, 0.15, 1.15, 0.85\n") 
+        printf("@ legend on\n") 
+        printf("@ legend box on\n") 
+        printf("@ legend loctype view\n") 
+        printf("@ legend 0.78, 0.8\n") 
+        printf("@ legend length 2\n") 
+        printf("@    s0 line type 0\n") 
+        printf("@    s0 symbol fill color 10\n") 
+        printf("@    s0 symbol fill pattern 9\n") 
+        printf("@    xaxis  tick spec type both\n") 
+        printf("@    xaxis  tick spec 13\n") 
+        printf("@    xaxis  tick major 2, 1\n") 
+        printf("@    xaxis  ticklabel 2, \"VDW\"\n") 
+        printf("@    xaxis  tick major 4, 2\n") 
+        printf("@    xaxis  ticklabel 4, \"Elec\"\n") 
+        printf("@    xaxis  tick major 6, 3\n") 
+        printf("@    xaxis  ticklabel 6, \"PB\"\n") 
+        printf("@    xaxis  tick major 8, 4\n") 
+        printf("@    xaxis  ticklabel 8, \"%s\"\n", Term) 
+        printf("@    xaxis  tick major 12, 5\n") 
+        printf("@    xaxis  ticklabel 12, \"Binding\"\n") 
+    }
+    
+    function ReadFsum(file, _ARGVEND_, i, j, k) {
+        i = 0; j = 1; k = 1
+        while(getline < file > 0) {
+            if($0~/Number/) {i++; j = 1; k = 1}
+            if($0~/van/) {data[i, j++] = $(NF-3)+0; Error[i, k++] = $(NF-1)+0}
+            if($0~/Electrosta/) {data[i, j++] = $(NF-3)+0; Error[i, k++] = $(NF-1)+0}
+            if($0~/Polar/) {data[i, j++] = $(NF-3)+0; Error[i, k++] = $(NF-1)+0}
+            if($0~/SASA/) {data[i, j++] = $(NF-3)+0; Error[i, k++] = $(NF-1)+0}
+            if($0~/SAV/) {data[i, j++] = $(NF-3)+0; Error[i, k++] = $(NF-1)+0}
+            if($0~/WCA/) {data[i, j++] = $(NF-3)+0; Error[i, k++] = $(NF-1)+0}
+            if($0~/Binding/) {data[i, j++] = $(NF-3)+0; Error[i, k++] = $(NF-1)+0}
+        }
+        close(file)
+        return i
+    }
+    
+    function NoZero(line) {
+        if(data[line, 4] != 0) {return "SASA"}
+        else if(data[line, 5] != 0) {return "SAV"}
+        else if(data[line, 6] != 0) {return "WCA"}
+    }
+    
+    function PrintSumXvg(_ARGVEND_, i, j) {
+        Ncomplex = ReadFsum(inputsum)
+        for(i = 1; i <= Ncomplex; i++) {
+            HeadXvg(NoZero(i))
+            for(j = 1; j <= 3; j++) {print j, data[i, j], Error[i, j] }
+            if(NoZero(i) == "SASA") {print 4, data[i, 4], Error[i, 4] }
+            else if(NoZero(i) == "SAV") {print 4, data[i, 5], Error[i, 5] }
+            else if(NoZero(i) == "WCA") {print 4, data[i, 6], Error[i, 6] }
+            print 5, data[i, 7], Error[i, 7] ; print 6, 0, 0 
+            print "@TYPE xy" ; print "0 0" ; print "6 0" 
+        }
+    }
+' >sum.xvg
+
+#IF yuu have multi-complex part in summary_energy.dat file, will split sum.xvg into
+#many single sum_xx.xvg file, in order to plot it by xmgrace
+if [[ $? -eq 0 ]] ;then
+    split -l 34 sum.xvg -d -a 2 sum_
+    for i in `ls sum_*`
+    do
+        mv $i $i.xvg
+    done
+    rm sum.xvg
+fi
+

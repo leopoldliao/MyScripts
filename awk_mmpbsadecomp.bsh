@@ -5,9 +5,9 @@
 ############################################################################
 #                     Author : Rewritten by Yujie Liu                      #
 #                        Email : 1051690424@qq.com                         #
-#                             Version : 1.1                                #
-#                           Date : 2020.02.12                              #
-#          Update Date : 2020.02.16, add residue EE and VDW Energy         #
+#                             Version : 1.2                                #
+#                           Date : 2020.05.12                              #
+#Update Date : 2020.05.12, default outputfile is .csv, I think it is better#
 ############################################################################
 
 #=========================HELP INFORMATION==============================#
@@ -23,8 +23,8 @@ Usage() {
         -bs   If given, Enable Boot Strap analysis
         -nbs  Vaule, Number of boot strap steps for average energy calculation (default: 500)
         -ct   Value, Absolute Cutoff: energy output above and below this value(default: 999)
-        -o    Output, Final Decomposed Energy File(default: final_contrib_energy.dat)
-        -om   Output, energy2bfac input file: to map energy on structure for visualization(default: energyMapIn.dat)
+        -o    Output, Final Decomposed Energy File(default: final_contrib_energy.csv)
+        -om   Output, energy2bfac input file: to map energy on structure for visualization(default: energyMapIn.csv)
     "
 }
 #+++++++++++++++++++++++++++DEFAULT PARAMETERS+++++++++++++++++++++++++#
@@ -36,8 +36,8 @@ apolar=contrib_apol.dat
 bootstrap=0
 nbstep=500
 cutoff=999
-output=final_contrib_energy.dat
-outmap=energyMapIn.dat
+output=final_contrib_energy.csv
+outmap=energyMapIn.csv
 
 [[ $# -lt 1 ]] && { Usage; exit 1; }
 options=($@); N=${#options[@]}
@@ -87,10 +87,10 @@ awk '
             printf(" %8s %8.4f %8.4f\n", resname[i], TotalEn[i, 0], TotalEn[i, 1])
         }
         
-        printf("#Residues  MM Energy(+/-)dev/error  EE Energy(+/-)dev/error  VDW Energy(+/-)dev/error  Polar Energy(+/-)dev/error APolar"\
-               "Energy(+/-)dev/error Total Energy(+/-)dev/error\n") > output
-        FMT="%-8s %10.4f %4.4f %10.4f %4.4f %10.4f %4.4f %10.4f %4.4f %10.4f %4.4f %10.4f %4.4f \n"
-        FMT1="%-8s %10.4f %4.4f %10s %4s %10s %4s %10.4f %4.4f %10.4f %4.4f %10.4f %4.4f \n"
+        printf("#Residues,  MM Energy,(+/-)dev/error,  EE Energy,(+/-)dev/error,  VDW Energy,(+/-)dev/error,  Polar Energy,(+/-)dev/error, APolar"\
+               "Energy,(+/-)dev/error, Total Energy,(+/-)dev/error\n") > output
+        FMT="%-8s, %10.4f, %4.4f, %10.4f, %4.4f, %10.4f, %4.4f, %10.4f, %4.4f, %10.4f, %4.4f, %10.4f, %4.4f \n"
+        FMT1="%-8s, %10.4f, %4.4f, %10s, %4s, %10s, %4s, %10.4f, %4.4f, %10.4f, %4.4f, %10.4f, %4.4f \n"
         #++++++++++++++++++++IF HVAE EE && VDW DATA FILE+++++++++++++++#
         if(Elec && VDW) {
             for(i = 0; i < line; i++) {
@@ -104,7 +104,7 @@ awk '
                            FinalVDW[i, 0], FinalVDW[i, 1], FinalPol[i, 0], FinalPol[i, 1],
                            FinalAPol[i, 0], FinalAPol[i, 1], TotalEn[i, 0], TotalEn[i, 1]) >> output
                 }
-                printf("%-8d %10.4f \n", i + 1, TotalEn[i, 0]) > outmap
+                printf("%-8d, %10.4f \n", i + 1, TotalEn[i, 0]) > outmap
             }
         }
         #++++++++++++++++++++++NORMAL WRITE+++++++++++++++++++++++++++++#

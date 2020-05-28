@@ -5,8 +5,9 @@
 ############################################################################
 #                     Author : Rewritten by Yujie Liu                      #
 #                        Email : 1051690424@qq.com                         #
-#                             Version : 1.0                                #
-#                           Date : 2020.02.11                              #
+#                             Version : 1.1                                #
+#                           Date : 2020.05.12                              #
+#Update Date : 2020.05.12, default outputfile is .csv, I think it is better#
 ############################################################################
 
 #=========================HELP INFORMATION==============================#
@@ -21,7 +22,7 @@ Usage() {
         -a    Input, Non-Polar solvation energy file obtained from g_mmpbsa(default: apolar.xvg)
         -bs   If given, Enable Boot Strap analysis
         -nbs  Vaule, Number of boot strap steps for average energy calculation (default: 1000)
-        -of   Output, Energy File: All energy components frame wise (default: full_energy.dat)
+        -of   Output, Energy File: All energy components frame wise (default: full_energy.csv)
         -os   Output, Final Energy File: Full Summary of energy components (default: summary_energy.dat)
         -om   Output, Final Energy File for Multiple Complexes: Complex wise final binding nergy (default: meta_energy.dat)
     "
@@ -34,7 +35,7 @@ polar=polar.xvg
 apolar=apolar.xvg
 bootstrap=0
 nbstep=1000
-outfr=full_energy.dat
+outfr=full_energy.csv
 outsum=summary_energy.dat
 outmeta=meta_energy.dat
 
@@ -61,10 +62,10 @@ awk '
         multiple="'$multiple'" + 0; metafile="'$metafile'"
         molmech="'$molmech'"; polar="'$polar'"; apolar="'$apolar'"; bootstrap="'$bootstrap'" + 0
         nbstep="'$nbstep'" + 0; frame_wise="'$outfr'"; outsum="'$outsum'"; outmeta="'$outmeta'"
-        printf("#Time E_VdW_mm(Protein)\tE_Elec_mm(Protein)\tE_Pol(Protein)\t" \
-               "E_Apol(Protein)\tE_VdW_mm(Ligand)\tE_Elec_mm(Ligand)\tE_Pol(Ligand)\t" \
-               "E_Apol(Ligand)\tE_VdW_mm(Complex)\tE_Elec_mm(Complex)\tE_Pol(Complex)\t" \
-               "E_Apol(Complex)\tDelta_E_mm\tDelta_E_Pol\tDelta_E_Apol\tDelta_E_binding\n") > frame_wise
+        printf("#Time, E_VdW_mm(Protein),\tE_Elec_mm(Protein,)\tE_Pol(Protein),\t" \
+               "E_Apol(Protein),\tE_VdW_mm(Ligand),\tE_Elec_mm(Ligand),\tE_Pol(Ligand),\t" \
+               "E_Apol(Ligand),\tE_VdW_mm(Complex),\tE_Elec_mm(Complex),\tE_Pol(Complex),\t" \
+               "E_Apol(Complex),\tDelta_E_mm,\tDelta_E_Pol,\tDelta_E_Apol,\tDelta_E_binding\n") > frame_wise
         filenumbers = 0
         if(multiple == 1) {
             ReadMetafile(metafile, MmFile, PolFile, APolFile)
@@ -216,7 +217,7 @@ awk '
             printf("\n\n#Complex Number: %4d\n", i+1) > outsum
             printf("===============\n   SUMMARY   \n===============\n\n") >> outsum
             printf("\n van der Waal energy      = %15.3lf   +/-  %7.3lf kJ/mol\n", Complex_SelfVdw[i, 0], Complex_SelfVdw[i, 1]) >> outsum
-            printf("\n Electrostattic energy    = %15.3lf   +/-  %7.3lf kJ/mol\n", Complex_SelfElec[i, 0], Complex_SelfElec[i, 1]) >> outsum
+            printf("\n Electrostatic energy    = %15.3lf   +/-  %7.3lf kJ/mol\n", Complex_SelfElec[i, 0], Complex_SelfElec[i, 1]) >> outsum
             printf("\n Polar solvation energy   = %15.3lf   +/-  %7.3lf kJ/mol\n", Complex_SelfPol[i, 0], Complex_SelfPol[i, 1]) >> outsum
             printf("\n SASA energy              = %15.3lf   +/-  %7.3lf kJ/mol\n", Complex_SelfSas[i, 0], Complex_SelfSas[i, 1]) >> outsum
             printf("\n SAV energy               = %15.3lf   +/-  %7.3lf kJ/mol\n", Complex_SelfSav[i, 0], Complex_SelfSav[i, 1]) >> outsum
@@ -257,10 +258,10 @@ awk '
         
         printf("\n#Complex %d\n", idx+1) >> frame_wise
         for(i = 0; i < length(Time); i++) {
-            printf("%15.3lf %15.3lf %15.3lf %15.3lf %15.3lf " \
-                   "%15.3lf %15.3lf %15.3lf %15.3lf " \
-                   "%15.3lf %15.3lf %15.3lf %15.3lf " \
-                   "%15.3lf %15.3lf %15.3lf %15.3lf\n",
+            printf("%15.3lf, %15.3lf, %15.3lf, %15.3lf, %15.3lf, " \
+                   "%15.3lf, %15.3lf, %15.3lf, %15.3lf, " \
+                   "%15.3lf, %15.3lf, %15.3lf, %15.3lf, " \
+                   "%15.3lf, %15.3lf, %15.3lf, %15.3lf\n",
                    Time[i], mmEn[1, i], mmEn[2, i], polEn[1, i], (apolEn[1, i] + apolEn[4, i] + apolEn[7, i]),
                    mmEn[3, i], mmEn[4, i], polEn[2, i], (apolEn[2, i] + apolEn[5, i] + apolEn[8, i]),
                    mmEn[5, i], mmEn[6, i], polEn[3, i], (apolEn[3, i] + apolEn[6, i] + apolEn[9, i]),
