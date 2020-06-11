@@ -363,7 +363,7 @@ awk '
         a[i, ZZ] = z;
     }
     
-    function reset_x_ndim(ndim, ncm, ind_cm, nreset, x, mass) {
+    function reset_x_ndim(ndim, ncm, ind_cm, nreset, x, mass, _ARGVEND_, xcm) {
         tm = 0.0;
         for(i = 0; i < ncm; i++) {
             ai = ind_cm[i];
