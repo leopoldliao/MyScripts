@@ -7,7 +7,7 @@
 #                        Email : 1051690424@qq.com                         #
 #                             Version : 1.6                                #
 #                           Date : 2019.05.11                              #
-#                       Update Date : 2020.04.16                           #
+#                       Update Date : 2020.05.16                           #
 ############################################################################
 
 #=========================HELP INFORMATION==============================#
@@ -21,7 +21,7 @@ echo '
     1. CMake (need add the bin folder included cmake.exe to windows path(Do not use 3.14 or above))
     2. Any shell software, for instance, cmder, cygwin, etc. for running grep, sed, etc.
     3. CUDA  --Optional(cpu version will be compiled if you did not install CUDA)
-    4. Visual Studio Community 2019
+    4. Visual Studio Community 2017
     5. Intel C++ Compiler 2020
     6. GROMACS source code could be 4.6.x, 5.x, 2016.x, 2018.x, 2019.x or 2020.x(from official website)
     7. FFTW tar.gz source code
@@ -103,6 +103,10 @@ if echo $(basename $package .tar.gz)|grep -i 2020 > /dev/null 2>&1; then
 	## Here, we should change some source code in [gmx_do_dssp.cpp], because this bug still exist 2020.2 version, this should depend on you!
 	# change line 195 into : mat->matrix.resize(mat->matrix.extent(1), nr);
 	# change line 196 into : mat->nx          = mat->axis_x.size();
+	
+	# official solution：2020.3
+	# delete line 195 and 196， add the follow line:
+	# mat->matrix.resize(++(mat->nx), nr);
 	
 	## if you need use dssp in gmx2020.2, please delete # 
 	#sed -i 's/mat->matrix.resize(mat->matrix.extent(0), nr)/mat->matrix.resize(mat->matrix.extent(1), nr)/' ${install_file}/../src/gromacs/gmxana/gmx_do_dssp.cpp
