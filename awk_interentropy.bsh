@@ -6,8 +6,8 @@
 ############################################################################
 #                     Author : Written by Yujie Liu                        #
 #                        Email : 1051690424@qq.com                         #
-#                             Version : 1.0                                #
-#                           Date : 2020.03.25                              #
+#                             Version : 1.1                                #
+#                           Date : 2020.05.25                              #
 ############################################################################
 
 #=========================HELP INFORMATION==============================#
@@ -21,6 +21,7 @@ Description() {
     Usage:
     
         Please change some initial variables in this script!
+        Then delete line 27
     "
 }
 [[ $# -lt 1 ]] && { Description; exit 1; }
@@ -42,10 +43,10 @@ do
     echo -e "${i}" |gmx convert-tpr -s $tpr -n $ndx -o new_${i}.tpr > /dev/null 2>&1
     gmx mdrun -rerun inter_${i}.xtc -s new_${i}.tpr -e inter_${i}.edr > /dev/null 2>&1
     echo -e "LJ-(SR) \n Coulomb-(SR) \n Coul.-recip." |gmx energy -f inter_${i}.edr -o inter_${i}.xvg > /dev/null 2>&1
-    cat inter_${i}.xvg |grep -E "^[^@#]" | awk '{print $2, $3, $4}'> inter_${i}.xvg
+    cat inter_${i}.xvg |grep -E "^[^@#]" | awk '{print $2, $3, $4}'> inter1_${i}.xvg
 done
 
-paste inter_${pro}.xvg inter_${lig}.xvg inter_${com}.xvg |\
+paste inter1_${pro}.xvg inter1_${lig}.xvg inter1_${com}.xvg |\
 awk '
     {
         vdw = $7-$1-$4; cou = (($8+$9)-($5+$6)-($2+$3))/2.0;
@@ -82,4 +83,4 @@ awk '
         printf("%-25s %8.3f (KJ/mol)\n", "Binding energy:", $2+$3+_TS)
     }
 '
-rm -rf inter_* Coul* LJ_SR* Disper* new_*.tpr *# traj.trr
+rm -rf inter* Coul* LJ_SR* Disper* new_*.tpr *# traj.trr
