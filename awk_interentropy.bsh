@@ -27,6 +27,7 @@ Description() {
 [[ $# -lt 1 ]] && { Description; exit 1; }
 
 #======================YOU NEED CHANGE THIS SECTION=====================#
+#These group name must be unique in ndx file, otherwise changed it into group number
 pro="Protein"
 lig="BEC"
 com="Protein_BEC"
