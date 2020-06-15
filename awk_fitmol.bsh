@@ -4,7 +4,7 @@
 ############################################################################
 #                     Author : Written by Yujie Liu                        #
 #                        Email : 1051690424@qq.com                         #
-#                             Version : 1.3                                #
+#                             Version : 1.4                                #
 #                           Date : 2020.06.10                              #
 ############################################################################
 
@@ -90,6 +90,7 @@ awk '
                 do_fit_ndim(3, natoms, w_rls, xptem, x);
                 rls = calc_similar_ind(ifit, ind_fit, w_rls, x, xptem);
                 printf("%8d %16.6f\n", ++frame, rls) >> outfile
+                fflush(outfile);
             }
         }
         else if(inputfile~/.gro/) {
@@ -113,6 +114,7 @@ awk '
                 do_fit_ndim(3, natoms, w_rls, xptem, x);
                 rls = calc_similar_ind(ifit, ind_fit, w_rls, x, xptem);
                 printf("%8d %16.6f\n", ++frame, rls) >> outfile
+                fflush(outfile);
             }
         }
         
@@ -152,6 +154,7 @@ awk '
     
     function _Mass(Symbol) {
         gsub(" ", "", Symbol)
+        Symbol = toupper(Symbol)
         if(Symbol~/^H/ || Symbol==1) {return 1.0}
         else if(Symbol~/^C/ || Symbol==6) {return 12.01100}
         else if(Symbol~/^O/ || Symbol==8) {return 15.99940}
