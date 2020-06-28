@@ -1,0 +1,198 @@
+#!/bin/bash
+# A script for generating Armchair and Zigzag Carbon Nanotube
+
+############################################################################
+#                     Author : Written by Yujie Liu                        #
+#                        Email : 1051690424@qq.com                         #
+#                             Version : 1.0                                #
+#                           Date : 2020.06.11                              #
+############################################################################
+
+#=========================HELP INFORMATION==============================#
+Usage() {
+    echo "
+    Usage: $0 Options
+        -h    Show help information
+        -n    Value [int], index n of CNT (default: 10)
+        -l    Value [nm], the length of CNT (default: 10 nm)
+        -s    Value [int], specify the kind of CNT structure (default: 1)
+              "1" : armcnt
+              "2" : zigzagcnt
+        -o    Output, output file name, support .xyz and .gro (default: cnt.gro)
+    "
+}
+#+++++++++++++++++++++++++++DEFAULT PARAMETERS+++++++++++++++++++++++++#
+outfile="cnt.gro"
+n=10
+l=10
+st=1
+
+[[ $# -lt 1 ]] && { Usage; exit 1; }
+options=($@); N=${#options[@]}
+for((i = 0; i < N; i++));do
+    arg=${options[$i]}; j=$((i+1))
+    [[ $arg =~ -h ]] && { Usage; exit 2; }
+    [[ $arg =~ -n ]] && { n=${options[$j]}; }
+    [[ $arg =~ -l ]] && { l=${options[$j]}; }
+    [[ $arg =~ -s ]] && { st=${options[$j]}; }
+    [[ $arg =~ -o ]] && { outfile=${options[$j]}; }
+done
+
+awk '
+    BEGIN {
+        n = "'$n'"+0; l = "'$l'"+0; st = "'$st'"+0
+        outfile = "'$outfile'"
+        Print_parameters()
+
+        if(outfile~/.gro$/) {
+            if(st == 1)
+                line = ArmCnt(n, l)
+            else
+                line = ZigzagCnt(n, l)
+            Write_gro(line, outfile)
+        }
+        else if(outfile~/.xyz$/) {
+            if(st == 1)
+                line = ArmCnt(n, l)
+            else
+                line = ZigzagCnt(n, l)
+            Write_xyz(line, outfile)
+        }
+        else {
+            print "\nError! Not support the format of output file"
+            exit 1
+        }
+
+    }
+
+    function Print_parameters() {
+        print "You are using the following parameteres:"
+        print "\tThe index n of CNT: ", n
+        print "\tThe length of CNT: ", l, "nm"
+        print "\tThe type of CNT: ", (st==1)? "Armchair" : "Zigzag"
+        print "\tOutput file name: ", outfile
+    }
+
+    function Write_gro(atoms, outfile) {
+        print "CNT"  > outfile
+        print atoms >> outfile
+        for(i = 0; i < atoms; i++) {
+            printf("%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n", 1, "CNT", coords[i, 0], (i+1)%100000,\
+                    coords[i, 1], coords[i, 2], coords[i, 3]) >> outfile
+        }
+        printf("%12.6f %12.6f %12.6f\n", 10, 10, pbc_l) >> outfile
+    }
+
+    function Write_xyz(atoms, outfile) {
+        print atoms > outfile
+        print "CNT" >> outfile
+        for(i = 0; i < atoms; i++) {
+            printf("%-3s %12.6f %12.6f %12.6f\n", coords[i, 0],
+                    coords[i, 1]*10, coords[i, 2]*10, coords[i, 3]*10) >> outfile
+        }
+    }
+
+    function ArmCnt(n, l, _ARGVEND_, n4) {
+        ccbond = 0.142                      #nm
+        PI = 4*atan2(1,1)
+        n1 = n2 = n4 = 0
+        dx = ccbond*cos(120/2*(PI/180))
+        dy = ccbond*sin(120/2*(PI/180))
+        R  = (n*(2*dx+ccbond)+n*ccbond)/(2*PI)
+        ycoord = dy; natoms = 2*n
+        for(i = 0; i < n; i++) {
+            circ1[++n1] = 2*dx+ccbond
+            circ1[++n1] = ccbond
+            circ2[++n2] = ccbond
+            circ2[++n2] = 2*dx+ccbond
+        }
+        circ1[0] = 0.0; delete circ1[n1]
+        circ2[0] = dx ; delete circ2[n2]
+
+        while(ycoord > -l) {
+            ycoord -= dy; arc = 0.0
+            for(i = 0; i < natoms; i++) {
+                coords[n4, 0] = "C"; arc += circ1[i]; theta = arc/R
+                coords[n4, 1] = R*cos(theta)
+                coords[n4, 2] = R*sin(theta)
+                coords[n4, 3] = ycoord
+                n4++
+            }
+            ycoord -= dy; arc = 0.0
+            for(i = 0; i < natoms; i++) {
+                coords[n4, 0] = "C"; arc += circ2[i]; theta = arc/R
+                coords[n4, 1] = R*cos(theta)
+                coords[n4, 2] = R*sin(theta)
+                coords[n4, 3] = ycoord
+                n4++
+            }
+        }
+        pbc_l = abs(ycoord)+dy
+        print "\n>>> Result:"
+        print "Armchair CNT: n = ", n, ", l = ", abs(ycoord), "nm"
+        print "Periodicity: ", pbc_l, "nm"
+        print "Diameter: ", 2*R, "nm"
+        return n4
+    }
+
+    function ZigzagCnt(n, l, _ARGVEND_, n4) {
+        ccbond = 0.142                      #nm
+        PI = 4*atan2(1,1)
+        n1 = n2 = n4 = 0
+        dy = ccbond*cos(120/2*(PI/180))
+        dx = ccbond*sin(120/2*(PI/180))
+        R  = (n*2*dx)/(2*PI)
+        ycoord = ccbond
+        for(i = 0; i < n; i++) {
+            circ1[++n1] = 2*dx
+            circ2[++n2] = 2*dx
+        }
+        circ1[0] = 0.0; delete circ1[n1]
+        circ2[0] = dx ; delete circ2[n2]
+
+        while(ycoord > -l) {
+            ycoord -= ccbond; arc = 0.0
+            for(i = 0; i < n; i++) {
+                coords[n4, 0] = "C"; arc += circ1[i]; theta = arc/R
+                coords[n4, 1] = R*cos(theta)
+                coords[n4, 2] = R*sin(theta)
+                coords[n4, 3] = ycoord
+                n4++
+            }
+            ycoord -= dy; arc = 0.0
+            for(i = 0; i < n; i++) {
+                coords[n4, 0] = "C"; arc += circ2[i]; theta = arc/R
+                coords[n4, 1] = R*cos(theta)
+                coords[n4, 2] = R*sin(theta)
+                coords[n4, 3] = ycoord
+                n4++
+            }
+            ycoord -= ccbond; arc = 0.0
+            for(i = 0; i < n; i++) {
+                coords[n4, 0] = "C"; arc += circ2[i]; theta = arc/R
+                coords[n4, 1] = R*cos(theta)
+                coords[n4, 2] = R*sin(theta)
+                coords[n4, 3] = ycoord
+                n4++
+            }
+            ycoord -= dy; arc = 0.0
+            for(i = 0; i < n; i++) {
+                coords[n4, 0] = "C"; arc += circ1[i]; theta = arc/R
+                coords[n4, 1] = R*cos(theta)
+                coords[n4, 2] = R*sin(theta)
+                coords[n4, 3] = ycoord
+                n4++
+            }
+        }
+        pbc_l = abs(ycoord)+ccbond
+        print "\n>>> Result:"
+        print "Zigzag CNT: n = ", n, ", l = ", abs(ycoord), "nm"
+        print "Periodicity: ", pbc_l, "nm"
+        print "Diameter: ", 2*R, "nm"
+        return n4
+    }
+
+    function abs(a) {
+        return a>0? a : -a
+    }
+'
