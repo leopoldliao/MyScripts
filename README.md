@@ -2,4 +2,4 @@
 Some useful scripts for dealing with gromacs data
 
 # Description
-These scripts may include bash script or awk program, or C program.
+These scripts may include bash script, awk, C, or python program.
