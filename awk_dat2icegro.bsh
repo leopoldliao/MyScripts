@@ -1,0 +1,38 @@
+#!/bin/bash
+
+csplit $1 /xl=/ {*} -f conf > /dev/null 2>&1
+rm -rf conf00
+
+for ffile in `ls conf*`
+do
+awk -v file=$ffile '
+    BEGIN {
+        i = 0; fn = "_"file;
+        getline<file;
+        sub(".+xl=", ""); sub("x-shift=.+", ""); sub("yl=", ""); sub("zl=", "")
+        xl = $1+0; yl = $2+0; zl = $3+0; getline<file
+        while(getline<file > 0) {
+            Xo[i, 0]  = $3+0; Xo[i, 1] = $4+0; Xo[i, 2] = $5+0;
+            Xh1[i, 0] = $6+0; Xh1[i, 1] = $7+0; Xh1[i, 2] = $8+0;
+            Xh2[i, 0] = $9+0; Xh2[i, 1] = $10+0; Xh2[i, 2] = $11+0;
+            i++
+        }
+        close(file)
+        print "MOL" > fn".gro"
+        print i*3 >> fn".gro"
+        n = 0
+        for(j = 0; j < i; j++) {
+            printf("%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n", \
+                    1, "MOL", "O", (++n)%100000, Xo[j, 0]/10,  Xo[j, 1]/10, Xo[j, 2]/10) >> fn".gro"
+            printf("%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n", \
+                    1, "MOL", "H", (++n)%100000,  Xh1[j, 0]/10, Xh1[j, 1]/10, Xh1[j, 2]/10) >> fn".gro"
+            printf("%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n", \
+                    1, "MOL", "H", (++n)%100000,  Xh2[j, 0]/10, Xh2[j, 1]/10, Xh2[j, 2]/10) >> fn".gro"
+        }
+        printf("%12.4f %12.4f %12.4f\n", xl/10, yl/10, zl/10) >> fn".gro"
+    }
+'
+done
+
+rm -rf conf*
+
