@@ -1,0 +1,65 @@
+#!/bin/bash
+
+awk '
+    BEGIN {
+        # E B-Sheet
+        # B B-Bridge
+        # S Bend
+        # T Turn
+        # H A-Helix
+        # G 3-Helix
+        # I 5-Helix
+        # = Chain separator
+        # ~ Coil
+        RS="\r?\n"
+        j = -1
+        Chain = 1
+    }
+
+    NR==1 {Nres = $1+0}
+    NR>1 {
+        for(i = 1; i <= length($0); i++) {
+            if((Stemp = substr($0, i, 1)) != "=") { #skip Chain separator
+                # SS[0, 0] start
+                SS[NR-2, (++j)%Nres] = Stemp
+            }
+            else {if(NR==2) Chain++}
+        }
+    }
+
+    END {
+        printf("#This Protein has %d Chains\n", Chain)
+        Print_Xvg()
+        printf("%4s\t%8s\t%8s\t%8s\t%8s\t%8s\t%8s\t%8s\t%8s\n",\
+                "#Residue", "B-Sheet", "B-Bridge", "Bend", "Turn", \
+                "A-Helix", "3-Helix", "5-Helix", "Coil")
+        for(j = 0; j < Nres; j++) {
+            S1 = S2 = S3 = S4 = S5 = S6 = S7 = S8 = 0
+            for(i = 0; i < NR-1; i++) {
+                if(SS[i, j] ==  "E") S1++
+                else if(SS[i, j] ==  "B") S2++
+                else if(SS[i, j] ==  "S") S3++
+                else if(SS[i, j] ==  "T") S4++
+                else if(SS[i, j] ==  "H") S5++
+                else if(SS[i, j] ==  "G") S6++
+                else if(SS[i, j] ==  "I") S7++
+                else if(SS[i, j] ==  "~") S8++
+            }
+            printf("%4d\t%8.6f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\t%8.6f\n", \
+                    j+1, S1/(NR-1), S2/(NR-1), S3/(NR-1), S4/(NR-1), \
+                    S5/(NR-1), S6/(NR-1), S7/(NR-1), S8/(NR-1))
+        }
+    }
+
+    function Print_Xvg() {
+        print "@ s0 legend \"B-Sheet\""
+        print "@ s1 legend \"B-Bridge\""
+        print "@ s2 legend \"Bend\""
+        print "@ s3 legend \"Turn\""
+        print "@ s4 legend \"A-Helix\""
+        print "@ s5 legend \"3-Helix\""
+        print "@ s6 legend \"5-Helix\""
+        print "@ s7 legend \"Coil\"\n"
+    }
+
+' ssdump.dat > ss_vs_res.xvg
