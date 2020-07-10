@@ -1,5 +1,5 @@
 #!/bin/bash
-# A script for compiling windows gromacs for 4.6.X, 5.X, 2016, 2018, 2019 and 2020 version by FFTW, including cpu and gpu version, which depends on whether you have installed CUDA toolkit and you want. 
+# A script for compiling windows gromacs for 4.6.X, 5.X, 2016, 2018, 2019 and 2020 version by FFTW, including cpu and gpu version, which depends on whether you have installed CUDA toolkit and you want.
 # Here I have tested gromacs version >= 4.6.X, more details could be found in the below website: https://liuyujie714.com/15.html -DGMX_BUILD_MDRUN_ONLY=ON
 
 ############################################################################
@@ -7,25 +7,25 @@
 #                        Email : 1051690424@qq.com                         #
 #                             Version : 1.6                                #
 #                           Date : 2019.05.11                              #
-#                       Update Date : 2020.05.16                           #
+#                       Update Date : 2020.07.08                           #
 ############################################################################
 
 #=========================HELP INFORMATION==============================#
 Description() {
 echo '
-    A script for compiling windows gromacs for 4.6.X, 5.X, 2016, 2018, 2019 and 2020 version by FFTW, 
-    including cpu and gpu version, which depends on whether you have installed CUDA toolkit and you want. 
-    
+    A script for compiling windows gromacs for 4.6.X, 5.X, 2016, 2018, 2019 and 2020 version by FFTW,
+    including cpu and gpu version, which depends on whether you have installed CUDA toolkit and you want.
+
   Note:
     You must install some needed softwares for compiling windows gromacs:
     1. CMake (need add the bin folder included cmake.exe to windows path(Do not use 3.14 or above))
     2. Any shell software, for instance, cmder, cygwin, etc. for running grep, sed, etc.
     3. CUDA  --Optional(cpu version will be compiled if you did not install CUDA)
-    4. Visual Studio Community 2017
+    4. Visual Studio Community 2019
     5. Intel C++ Compiler 2020
     6. GROMACS source code could be 4.6.x, 5.x, 2016.x, 2018.x, 2019.x or 2020.x(from official website)
     7. FFTW tar.gz source code
-    
+
     You must put tar.gz file of gromacs and fftw and this script into same folder'
 }
 
@@ -72,9 +72,9 @@ cmake . -DCMAKE_INSTALL_PREFIX=./ \
         -DBUILD_SHARED_LIBS=ON \
         -G "Visual Studio 15 2017 Win64" \
         -T "Intel C++ Compiler 19.1" > /dev/null 2>&1
-sleep 1 
+sleep 1
 cmake --build . --target INSTALL --config Release > /dev/null 2>&1
-sleep 10 
+sleep 10
 cd ..
 
 #find fftw name
@@ -90,28 +90,31 @@ if echo $(basename $package .tar.gz)|grep -i 2020 > /dev/null 2>&1; then
 	# unpack source code of gromacs
 	tar -xzf gromacs-2020*.tar.gz
 	cd  gromacs-2020*/
-	
+
 	mkdir build
 	cd build/
 	install_file=`echo | pwd`
 	## set correct -std for nvcc flags
 	sed -i 's/list(APPEND GMX_CUDA_NVCC_FLAGS "${GMX_CXX_STANDARD_COMPILE_OPTION}")/list(APPEND GMX_CUDA_NVCC_FLAGS "-std c++14")/' ${install_file}/../cmake/gmxManageNvccConfig.cmake
-	
+
 	## fix a bug using Intel C++ compiler, we should change constexpr into const(In fact, gmx2020 and 2020.1 <const> is correct, but starting from 2020.2, default type is constexpr, this caused error happened)
 	sed -i 's/define CONSTEXPR_EXCL_OLD_CLANG constexpr/define CONSTEXPR_EXCL_OLD_CLANG const/' ${install_file}/../src/gromacs/listed_forces/bonded.cpp
-	
+
 	## Here, we should change some source code in [gmx_do_dssp.cpp], because this bug still exist 2020.2 version, this should depend on you!
 	# change line 195 into : mat->matrix.resize(mat->matrix.extent(1), nr);
 	# change line 196 into : mat->nx          = mat->axis_x.size();
-	
+
 	# official solution：2020.3
 	# delete line 195 and 196， add the follow line:
 	# mat->matrix.resize(++(mat->nx), nr);
-	
-	## if you need use dssp in gmx2020.2, please delete # 
+
+	## if you need use dssp in gmx2020.2, please delete #
 	#sed -i 's/mat->matrix.resize(mat->matrix.extent(0), nr)/mat->matrix.resize(mat->matrix.extent(1), nr)/' ${install_file}/../src/gromacs/gmxana/gmx_do_dssp.cpp
 	#sed -i 's/mat->nx          = mat->matrix.extent(0)/mat->nx          = mat->axis_x.size()/' ${install_file}/../src/gromacs/gmxana/gmx_do_dssp.cpp
-	
+
+	## fix same residue number 1, see https://gitlab.com/gromacs/gromacs/-/issues/3574
+    sed -i 's/if (atoms_->nres <= mtop_->maxresnr)/if (atoms_->nres <= mtop_->maxresnr+1)/' ${install_file}/../src/gromacs/topology/mtop_util.cpp
+
 	# cmake source code
 	if [[ `nvcc --version | grep -i nvidia` && ${YesGpu} == 1 ]] > /dev/null 2>&1; then
 		echo ""
@@ -130,7 +133,7 @@ if echo $(basename $package .tar.gz)|grep -i 2020 > /dev/null 2>&1; then
 		         -DGMX_QMMM_PROGRAM=gaussian \
 		         -DCUDA_NVCC_FLAGS=--Wno-deprecated-gpu-targets \
 		         -DGMX_VERSION_STRING_OF_FORK="${gmx_version}"  > /dev/null 2>&1
-	else 
+	else
 		echo ""
 		echo ""
 		echo "You choose to compile CPU version of gromacs2020 or CUDA has not been installed on this Windows"
@@ -154,13 +157,13 @@ elif echo $(basename $package .tar.gz)|grep -i 2019 > /dev/null 2>&1; then
 	# unpack source code of gromacs
 	tar -xzf gromacs-2019*.tar.gz
 	cd  gromacs-2019*/
-	
+
 	mkdir build
 	cd build/
 	install_file=`echo | pwd`
 	#### here, I changed pme-internal.h file because this vs2017 version(RTW 15) would cause an error, but if you update vs2017, it seems that no error occurred. ####
 	#sed -i 's/enum PmeRunMode runMode/enum class PmeRunMode runMode/' ${install_file}/../src/gromacs/ewald/pme-internal.h
-	
+
 	# cmake source code
 	if [[ `nvcc --version | grep -i nvidia` && ${YesGpu} == 1 ]] > /dev/null 2>&1; then
 		echo ""
@@ -178,7 +181,7 @@ elif echo $(basename $package .tar.gz)|grep -i 2019 > /dev/null 2>&1; then
 		         -DGMX_GPU=ON \
 		         -DCUDA_NVCC_FLAGS=--Wno-deprecated-gpu-targets \
 		         -DGMX_QMMM_PROGRAM=gaussian > /dev/null 2>&1
-	else 
+	else
 		echo ""
 		echo ""
 		echo "You choose to compile CPU version of gromacs2019 or CUDA has not been installed on this Windows"
@@ -201,11 +204,11 @@ elif echo $(basename $package .tar.gz)|grep -i 2018 > /dev/null 2>&1; then
 	# unpack source code of gromacs
 	tar -xzf gromacs-2018*.tar.gz
 	cd  gromacs-2018*/
-	
+
 	mkdir build
 	cd build/
 	install_file=`echo | pwd`
-	
+
 	# cmake source code
 	if [[ `nvcc --version | grep -i nvidia` && ${YesGpu} == 1 ]] > /dev/null 2>&1; then
 		echo ""
@@ -229,7 +232,7 @@ elif echo $(basename $package .tar.gz)|grep -i 2018 > /dev/null 2>&1; then
 		         -DGMX_NVCC_WORKS=ON \
 		         -DGMX_QMMM_PROGRAM=gaussian \
 		         -DCUDA_NVCC_FLAGS=--Wno-deprecated-gpu-targets > /dev/null 2>&1
-	else 
+	else
 		echo ""
 		echo ""
 		echo "You choose to compile CPU version of gromacs2018 or CUDA has not been installed on this Windows"
@@ -252,7 +255,7 @@ elif echo $(basename $package .tar.gz)|grep -i 2016 > /dev/null 2>&1; then
 	# unpack source code of gromacs
 	tar -xzf gromacs-2016*.tar.gz
 	cd  gromacs-2016*/
-	
+
 	mkdir build
 	cd build/
 	install_file=`echo | pwd`
@@ -275,7 +278,7 @@ elif echo $(basename $package .tar.gz)|grep -i 2016 > /dev/null 2>&1; then
 		         -DCMAKE_PREFIX_PATH=$FFT_HOME \
 		         -DGMX_GPU=ON \
 		         -DCUDA_NVCC_FLAGS=--Wno-deprecated-gpu-targets > /dev/null 2>&1
-	else 
+	else
 		echo ""
 		echo ""
 		echo "You choose to compile CPU version of gromacs2016 or CUDA has not been installed on this Windows"
@@ -297,7 +300,7 @@ elif echo $(basename $package .tar.gz)|grep -i 5. > /dev/null 2>&1; then
 	# unpack source code of gromacs
 	tar -xzf gromacs-5*.tar.gz
 	cd  gromacs-5*/
-	
+
 	mkdir build
 	cd build/
 	install_file=`echo | pwd`
@@ -319,7 +322,7 @@ elif echo $(basename $package .tar.gz)|grep -i 5. > /dev/null 2>&1; then
 		         -DCMAKE_PREFIX_PATH=$FFT_HOME \
 		         -DGMX_GPU=ON \
 		         -DCUDA_NVCC_FLAGS=--Wno-deprecated-gpu-targets > /dev/null 2>&1
-	else 
+	else
 		echo ""
 		echo ""
 		echo "You choose to compile CPU version of gromacs5.x or CUDA has not been installed on this Windows"
@@ -341,7 +344,7 @@ elif echo $(basename $package .tar.gz)|grep -i 4.6 > /dev/null 2>&1; then
 	# unpack source code of gromacs
 	tar -xzf gromacs-4.6*.tar.gz
 	cd  gromacs-4.6*/
-	
+
 	mkdir build
 	cd build/
 	install_file=`echo | pwd`
@@ -364,7 +367,7 @@ elif echo $(basename $package .tar.gz)|grep -i 4.6 > /dev/null 2>&1; then
 		         -DCMAKE_PREFIX_PATH=$FFT_HOME \
 		         -DGMX_GPU=ON \
 		         -DCUDA_NVCC_FLAGS=--Wno-deprecated-gpu-targets > /dev/null 2>&1
-	else 
+	else
 		echo ""
 		echo ""
 		echo "You choose to compile CPU version of gromacs4.6.x or CUDA has not been installed on this Windows"
@@ -380,7 +383,7 @@ elif echo $(basename $package .tar.gz)|grep -i 4.6 > /dev/null 2>&1; then
 		         -DGMX_GPU=OFF > /dev/null 2>&1
 	fi
 
-else 
+else
 	echo ""
 	echo ""
 	echo "You haven't source code of gromacs 4.6.X, 5.X, 2016, 2018, 2019 or 2020, the program will not work！"
