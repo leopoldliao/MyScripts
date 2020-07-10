@@ -1,0 +1,80 @@
+#!/bin/bash
+# A script for calculating each Structure percentage by reading dssp output file.
+
+############################################################################
+#                     Author : Written by Yujie Liu                        #
+#                        Email : 1051690424@qq.com                         #
+#                             Version : 1.0                                #
+#                           Date : 2020.07.08                              #
+############################################################################
+
+if ${DSSP} --version 2>&1 | grep -i mkdssp > /dev/null ; then
+    echo "DSSP set correct..."
+else
+    echo -e "\nERROR! Not found dssp program. Please set DSSP into environment variable"
+    echo -e "For Example:\n  export DSSP=/usr/local/bin/dssp\n"
+    exit 1
+fi
+
+cat > awk_dssp_ss.bash << "EOF"
+#!/bin/bash
+${DSSP} -i conf$1.pdb -o temp.dssp
+t=`grep "t=" conf$1.pdb |awk '{sub(/.*t=/,"");sub(/step=.*/,""); print $0+0}'`
+awk '
+    BEGIN { nr = 0 }
+    # E B-Sheet
+    # B B-Bridge
+    # S Bend
+    # T Turn
+    # H A-Helix
+    # G 3-Helix
+    # I 5-Helix
+    # = Chain separator
+    # ~ Coil
+    /KAPPA/ {
+        while(getline > 0) {
+            if(substr($0, 14, 1) == "!") { # ! is Chain separator
+                SSTP = "="
+            }
+            else {
+                SSTP = (substr($0, 17, 1) == " " ? "~" : substr($0, 17, 1))
+            }
+            ssbuff[nr] = SSTP
+            nr++
+        }
+    }
+
+    END {
+        for(i = 0;  i < nr; i ++) {
+            if(ssbuff[i] == "E") {isE++}
+            else if(ssbuff[i] == "B") {isB++}
+            else if(ssbuff[i] == "S") {isS++}
+            else if(ssbuff[i] == "T") {isT++}
+            else if(ssbuff[i] == "H") {isH++}
+            else if(ssbuff[i] == "G") {isG++}
+            else if(ssbuff[i] == "I") {isI++}
+            else if(ssbuff[i] == "~") {isCoil++}
+            else if(ssbuff[i] == "=") {No++}
+        }
+        Nres = nr - No
+        printf("%8s %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n",\
+               "'$t'"+0, isE/Nres, isB/Nres, isS/Nres, isT/Nres, isH/Nres,\
+               isG/Nres, isI/Nres, isCoil/Nres) >> "dssp.xvg"
+    }
+' temp.dssp
+EOF
+
+echo "@    xaxis  label \"Time(ps)\"" > dssp.xvg
+echo "@    yaxis  label \"Possibility\"" >> dssp.xvg
+echo "@    s0 legend  \"B-Sheet\"" >> dssp.xvg
+echo "@    s1 legend  \"B-Bridge\"" >> dssp.xvg
+echo "@    s2 legend  \"Bend\"" >> dssp.xvg
+echo "@    s3 legend  \"Turn\"" >> dssp.xvg
+echo "@    s4 legend  \"A-Helix\"" >> dssp.xvg
+echo "@    s5 legend  \"3-Helix\"" >> dssp.xvg
+echo "@    s6 legend  \"5-Helix\"" >> dssp.xvg
+echo "@    s7 legend  \"Coil\"" >> dssp.xvg
+echo "#Time(ps)  B-Sheet  B-Bridge  Bend     Turn    A-Helix  3-Helix  5-Helix   Coil" >> dssp.xvg
+
+echo 1 | gmx trjconv -f md.xtc -s md.tpr -o conf.pdb -sep -quiet -exec "bash awk_dssp_ss.bash"
+rm -rf conf*.pdb temp.dssp awk_dssp_ss.bash
