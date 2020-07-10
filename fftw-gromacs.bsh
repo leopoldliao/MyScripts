@@ -21,7 +21,7 @@ echo '
     1. CMake (need add the bin folder included cmake.exe to windows path(Do not use 3.14 or above))
     2. Any shell software, for instance, cmder, cygwin, etc. for running grep, sed, etc.
     3. CUDA  --Optional(cpu version will be compiled if you did not install CUDA)
-    4. Visual Studio Community 2019
+    4. Visual Studio Community 2017
     5. Intel C++ Compiler 2020
     6. GROMACS source code could be 4.6.x, 5.x, 2016.x, 2018.x, 2019.x or 2020.x(from official website)
     7. FFTW tar.gz source code
