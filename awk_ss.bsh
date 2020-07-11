@@ -52,6 +52,8 @@ awk '
     }
 
     function Print_Xvg() {
+        print "@    xaxis  label \"Residue Number\""
+        print "@    yaxis  label \"Possibility\""
         print "@ s0 legend \"B-Sheet\""
         print "@ s1 legend \"B-Bridge\""
         print "@ s2 legend \"Bend\""
