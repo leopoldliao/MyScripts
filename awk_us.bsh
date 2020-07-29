@@ -9,30 +9,41 @@
 #########################################################################
 
 
-#vvvvvvvvvvvvvvvvvvvvvvvvvvvSHOULD CHANGEvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#
-# For example, interval,
-# tpr and xtc/trr file name, pull group name for calculating center of mass distance
+#vvvvvvvvvvvvvvvvvvvvvvvvvvvCHANGE SECTIONvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#
+# For example, interval, tpr and xtc/trr file name, pull group name
+# for calculating center of mass distance should be changed by yourself
 
+tpr="pull.tpr"                          # pull tpr file
+xtc="pull.xtc"                          # pull xtc/trr file
+ndx="index.ndx"                         # ndx file, including groupA, groupB
+groupA="Chain_A"                        # first group name
+groupB="Chain_B"                        # second group name
+
+gmx="gmx"                               # Maybe gmx, gmx_mpi etc
 inputfile="summary_distances.dat"       # input file
 interval=0.2                            # Unit nm, you can change it
 outdist="outdistance.dat"               # distance output file
 outbatch="do_batch.bsh"                 # batch output file
-
-# generate conf*.gro file in order to US simulation
-echo 0 | gmx trjconv -s pull.tpr -f pull.xtc -o conf.gro -sep -quiet
-
-# generate distance of each frame and change the first column into frame index(from 0 start)
-gmx distance -s pull.tpr -f pull.xtc -n index.ndx -select 'com of group "Chain_A" plus com of group "Chain_B"' -oall temp.xvg -xvg none -quiet
-awk '{printf("%4d %8f\n", NR-1, $2)}' temp.xvg > $inputfile
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#
 
 
 #============================DO NOT CHANGE==============================#
+# generate conf*.gro file in order to US simulation
+echo -e "\n>>Generating a series of conf*.gro file..."
+echo 0 | $gmx trjconv -s $tpr -f $xtc -o conf.gro -sep -quiet > /dev/null 2>&1
+
+# generate distance of each frame and change the first column into frame index(from 0 start)
+echo -e "\n>>Calculating center of mass distance between two groups..."
+$gmx distance -s $tpr -f $xtc -n $ndx -select "com of group "$groupA" plus com of group "$groupB"" -oall temp.xvg -xvg none -quiet > /dev/null 2>&1
+awk '{printf("%4d %8f\n", NR-1, $2)}' temp.xvg > $inputfile
+
 # read input file and generate distance file and batch file for simulation
+echo -e "\n>>Creating batch script according to given interval..."
 awk '
     BEGIN {
         inputfile = "'$inputfile'"; interval = "'$interval'"+0;
         outdist = "'$outdist'";  outbatch = "'$outbatch'";
+        gmx = "'$gmx'"; ndx = "'$ndx'"
         print "\n>>Input file:     ", inputfile
         print ">>Input interval: ", interval, "(nm)"
 
@@ -62,17 +73,17 @@ awk '
     #output batch file, you can change it if you understand it means
     function out_batch(fram, outfile) {
         printf("#Do the %s frame simulation\n", fram) >> outfile
-        printf("gmx grompp -f npt_umbrella.mdp -c conf%s.gro -r conf%s.gro -p topol.top -n index.ndx -o npt%s.tpr\n",
-                fram, fram, fram) >> outfile
-        printf("gmx mdrun -deffnm npt%s\n", fram) >> outfile
-        printf("gmx grompp -f md_umbrella.mdp -c npt%s.gro -r npt%s.gro -t npt%s.cpt -p topol.top -n index.ndx -o umbrella%s.tpr\n",
-                fram, fram, fram, fram) >> outfile
-        printf("gmx mdrun -deffnm umbrella%s\n\n", fram) >> outfile
+        printf("%s grompp -f npt_umbrella.mdp -c conf%s.gro -r conf%s.gro -p topol.top -n %s -o npt%s.tpr\n",
+                gmx, fram, fram, ndx, fram) >> outfile
+        printf("%s mdrun -deffnm npt%s\n", gmx, fram) >> outfile
+        printf("%s grompp -f md_umbrella.mdp -c npt%s.gro -r npt%s.gro -t npt%s.cpt -p topol.top -n %s -o umbrella%s.tpr\n",
+                gmx, fram, fram, fram, ndx, fram) >> outfile
+        printf("%s mdrun -deffnm umbrella%s\n\n", gmx, fram) >> outfile
     }
 
     #output distance file
     function out_dist(fram, dist, delta_dist, outdist) {
-        printf("%10i %10.3f %10s\n", fram, dist, delta_dist) >> outdist
+        printf("%10d %10.3f %10s\n", fram, dist, delta_dist) >> outdist
     }
 
     #main function for finding appropriate windows
@@ -91,26 +102,21 @@ awk '
         while(current_index < n) {
             target_distance = distances[current_index, 1] + interval
             tt = 0
-
             for(i = current_index; i < n; i++) {
                 onward[tt++]  = abs(target_distance - distances[i, 1])
             }
-
             for(j in onward) {
                 if(onward[j] == min(onward)) {
                     next_index = j + current_index
                 }
             }
-
             if(current_index == next_index) {break}
             else {
                 sample_indexs[++iindex] = next_index
                 current_index = next_index
             }
-
             delete onward
         }
-
         return length(sample_indexs)
     }
 
@@ -130,7 +136,7 @@ awk '
 
     #output information
     function Thanks() {
-        print "\n================================="
+        print "\n=============RESULT=============="
         print outdist " has been created!"
         print outbatch " has been created!"
         print "================================="
