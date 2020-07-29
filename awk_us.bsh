@@ -1,0 +1,138 @@
+#!/bin/bash
+# A awk script for creating batch script of Umbrella Sample, GMX Version should >= 5.1
+
+#########################################################################
+#                     Author : Written by Yujie Liu                     #
+#                        Email : 1051690424@qq.com                      #
+#                             Version : 1.0                             #
+#                           Date : 2020.07.25                           #
+#########################################################################
+
+
+#vvvvvvvvvvvvvvvvvvvvvvvvvvvSHOULD CHANGEvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#
+# For example, interval,
+# tpr and xtc/trr file name, pull group name for calculating center of mass distance
+
+inputfile="summary_distances.dat"       # input file
+interval=0.2                            # Unit nm, you can change it
+outdist="outdistance.dat"               # distance output file
+outbatch="do_batch.bsh"                 # batch output file
+
+# generate conf*.gro file in order to US simulation
+echo 0 | gmx trjconv -s pull.tpr -f pull.xtc -o conf.gro -sep -quiet
+
+# generate distance of each frame and change the first column into frame index(from 0 start)
+gmx distance -s pull.tpr -f pull.xtc -n index.ndx -select 'com of group "Chain_A" plus com of group "Chain_B"' -oall temp.xvg -xvg none -quiet
+awk '{printf("%4d %8f\n", NR-1, $2)}' temp.xvg > $inputfile
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#
+
+
+#============================DO NOT CHANGE==============================#
+# read input file and generate distance file and batch file for simulation
+awk '
+    BEGIN {
+        inputfile = "'$inputfile'"; interval = "'$interval'"+0;
+        outdist = "'$outdist'";  outbatch = "'$outbatch'";
+        print "\n>>Input file:     ", inputfile
+        print ">>Input interval: ", interval, "(nm)"
+
+        #read file and obtain data
+        ll = sampledist(inputfile, interval, sample_indexs, distances)
+
+        #output data file, including distance and batch script
+        printf("%10s %10s %10s\n", "frame", "dist", "d_dist") > outdist
+        printf("#!/bin/bash\n\n") > outbatch
+        for(i = 0; i < ll; i++) {
+            frame = distances[sample_indexs[i], 0]
+            dist  = distances[sample_indexs[i], 1]
+            if(i == 0) {delta_dist = "NA"}
+            else {
+                prev_dist  = distances[sample_indexs[i-1], 1]
+                delta_dist = dist - prev_dist
+            }
+
+            out_dist(frame, dist, delta_dist, outdist)
+            out_batch(frame, outbatch)
+        }
+
+        Thanks()
+    }
+
+    #==========================SOME FUNCTION============================#
+    #output batch file, you can change it if you understand it means
+    function out_batch(fram, outfile) {
+        printf("#Do the %s frame simulation\n", fram) >> outfile
+        printf("gmx grompp -f npt_umbrella.mdp -c conf%s.gro -r conf%s.gro -p topol.top -n index.ndx -o npt%s.tpr\n",
+                fram, fram, fram) >> outfile
+        printf("gmx mdrun -deffnm npt%s\n", fram) >> outfile
+        printf("gmx grompp -f md_umbrella.mdp -c npt%s.gro -r npt%s.gro -t npt%s.cpt -p topol.top -n index.ndx -o umbrella%s.tpr\n",
+                fram, fram, fram, fram) >> outfile
+        printf("gmx mdrun -deffnm umbrella%s\n\n", fram) >> outfile
+    }
+
+    #output distance file
+    function out_dist(fram, dist, delta_dist, outdist) {
+        printf("%10i %10.3f %10s\n", fram, dist, delta_dist) >> outdist
+    }
+
+    #main function for finding appropriate windows
+    function sampledist(table, interval, sample_indexs, distances, _ARGVEND_, i, n) {
+        n = 0;
+        while(getline<table>0) {
+            distances[n, 0] = $1
+            distances[n, 1] = $2+0
+            n++
+        }
+        close(table)
+
+        current_index = 0
+        sample_indexs[0] = 0
+        iindex = 0
+        while(current_index < n) {
+            target_distance = distances[current_index, 1] + interval
+            tt = 0
+
+            for(i = current_index; i < n; i++) {
+                onward[tt++]  = abs(target_distance - distances[i, 1])
+            }
+
+            for(j in onward) {
+                if(onward[j] == min(onward)) {
+                    next_index = j + current_index
+                }
+            }
+
+            if(current_index == next_index) {break}
+            else {
+                sample_indexs[++iindex] = next_index
+                current_index = next_index
+            }
+
+            delete onward
+        }
+
+        return length(sample_indexs)
+    }
+
+    #abs function
+    function abs(a) {
+        return a>0? a : -a
+    }
+
+    #find minimum
+    function min(x, _ARGVEND_, value, i) {
+        value = 99999
+        for(i in x) {
+            value = value < x[i] ? value : x[i]
+        }
+        return value
+    }
+
+    #output information
+    function Thanks() {
+        print "\n================================="
+        print outdist " has been created!"
+        print outbatch " has been created!"
+        print "================================="
+    }
+'
