@@ -4,25 +4,26 @@
 #########################################################################
 #                     Author : Written by Yujie Liu                     #
 #                        Email : 1051690424@qq.com                      #
-#                             Version : 1.0                             #
-#                           Date : 2020.07.25                           #
+#                             Version : 1.1                             #
+#                           Date : 2020.07.26                           #
 #########################################################################
 
 
 #vvvvvvvvvvvvvvvvvvvvvvvvvvvCHANGE SECTIONvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#
 # For example, interval, tpr and xtc/trr file name, pull group name
-# for calculating center of mass distance should be changed by yourself
+# for calculating center of mass distance/dihedral should be changed by yourself
 
 tpr="pull.tpr"                          # pull tpr file
 xtc="pull.xtc"                          # pull xtc/trr file
+pull_type="distance"                    # distance pull, maybe "dihedral"
 ndx="index.ndx"                         # ndx file, including groupA, groupB
-groupA="Chain_A"                        # first group name
-groupB="Chain_B"                        # second group name
+groupA="Chain_A"                        # first group name for distance pull or dihedral pull(noly)
+groupB="Chain_B"                        # second group name for distance pull
 
 gmx="gmx"                               # Maybe gmx, gmx_mpi etc
-inputfile="summary_distances.dat"       # input file
-interval=0.2                            # Unit nm, you can change it
-outdist="outdistance.dat"               # distance output file
+inputfile="summary_distances.dat"       # temp file, do not change
+interval=0.2                            # Unit nm for distance, degree for dihedral, you can change it
+outdist="outdistance.dat"               # distance/dihedral output file
 outbatch="do_batch.bsh"                 # batch output file
 #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#
 
@@ -32,18 +33,24 @@ outbatch="do_batch.bsh"                 # batch output file
 echo -e "\n>>Generating a series of conf*.gro file..."
 echo 0 | $gmx trjconv -s $tpr -f $xtc -o conf.gro -sep -quiet > /dev/null 2>&1
 
-# generate distance of each frame and change the first column into frame index(from 0 start)
-echo -e "\n>>Calculating center of mass distance between two groups..."
-$gmx distance -s $tpr -f $xtc -n $ndx -select "com of group "$groupA" plus com of group "$groupB"" -oall temp.xvg -xvg none -quiet > /dev/null 2>&1
+# generate distance/dihedral of each frame and change the first column into frame index(from 0 start)
+if [[ $pull_type == "distance" ]]; then
+    echo -e "\n>>Calculating center of mass distance between two groups..."
+    $gmx distance -s $tpr -f $xtc -n $ndx -select "com of group "$groupA" plus com of group "$groupB"" -oall temp.xvg -xvg none -quiet > /dev/null 2>&1
+elif [[ $pull_type == "dihedral" ]];then
+    echo -e "\n>>Calculating dihedral ..."
+    echo $groupA |$gmx gangle -s $tpr -f $xtc -n $ndx  -g1 dihedral -oall temp.xvg -xvg none -quiet > /dev/null 2>&1
+fi
+
 awk '{printf("%4d %8f\n", NR-1, $2)}' temp.xvg > $inputfile
 
-# read input file and generate distance file and batch file for simulation
+# read input file and generate distance/dihedral file and batch file for simulation
 echo -e "\n>>Creating batch script according to given interval..."
 awk '
     BEGIN {
         inputfile = "'$inputfile'"; interval = "'$interval'"+0;
         outdist = "'$outdist'";  outbatch = "'$outbatch'";
-        gmx = "'$gmx'"; ndx = "'$ndx'"
+        gmx = "'$gmx'"; ndx = "'$ndx'"; pull_type = "'$pull_type'"
         print "\n>>Input file:     ", inputfile
         print ">>Input interval: ", interval, "(nm)"
 
@@ -51,7 +58,10 @@ awk '
         ll = sampledist(inputfile, interval, sample_indexs, distances)
 
         #output data file, including distance and batch script
-        printf("%10s %10s %10s\n", "frame", "dist", "d_dist") > outdist
+        if(pull_type == "distance")
+            printf("%10s %10s %10s\n", "frame", "dist", "d_dist") > outdist
+        else if(pull_type == "dihedral")
+            printf("%10s %10s %10s\n", "frame", "angle", "d_angle") > outdist
         printf("#!/bin/bash\n\n") > outbatch
         for(i = 0; i < ll; i++) {
             frame = distances[sample_indexs[i], 0]
