@@ -4,8 +4,8 @@
 #########################################################################
 #                     Author : Written by Yujie Liu                     #
 #                        Email : 1051690424@qq.com                      #
-#                             Version : 1.1                             #
-#                           Date : 2020.07.26                           #
+#                             Version : 1.2                             #
+#                           Date : 2020.07.27                           #
 #########################################################################
 
 
@@ -118,6 +118,7 @@ awk '
             for(j in onward) {
                 if(onward[j] == min(onward)) {
                     next_index = j + current_index
+                    break
                 }
             }
             if(current_index == next_index) {break}
