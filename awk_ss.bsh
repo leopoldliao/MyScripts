@@ -23,7 +23,7 @@ awk '
                 # SS[0, 0] start
                 SS[NR-2, (++j)%Nres] = Stemp
             }
-            else {if(NR==2) Chain++}
+            else {Chain++}
         }
     }
 
