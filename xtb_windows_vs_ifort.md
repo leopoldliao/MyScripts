@@ -29,6 +29,7 @@ should change into
 ```
 of course can add SIMD instruction, but here I don't.
 * Modify `xtb\TESTSUITE\c_api_example.c` file
+
 We should directly define array：
 ```c
 double q[7];
