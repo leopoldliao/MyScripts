@@ -6,7 +6,7 @@
 It provides Cl compiler, Nmake and cmake tools
 * Intel Parallel Studio XE 2020
 
-It provides Intel Fortran Compiler 19.1, including blas and lapack libraries
+It provides Intel Fortran Compiler 19.1, including blas and lapack libraries, openmp
 
 ## Modified xtb 6.3.2 source
 * Modify `xtb\CMakeLists.txt` file
