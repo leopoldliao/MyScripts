@@ -37,6 +37,27 @@ double wbo[7*7];
 char buffer[512];
 ```
 Because Cl compiler can not identify Variable Length Array in C， only work correctly in C++
+* Modify path for Windows
+My old method, change some path for gfn0 in `\src\main\setup.f90`
+```fortran
+logical :: alive
+
+if (present(fname)) then
+   if(index(fname, 'param_gfn0-xtb.txt') .ne. 0) then
+       inquire(file=fname, exist=alive)
+       if(alive) then
+           filename = fname
+       else
+           filename = env%xtbpath//'/param_gfn0-xtb.txt'
+       end if
+   else
+       filename = fname
+   end if
+else
+```
+
+Official method see:
+https://github.com/grimme-lab/xtb/pull/320/commits/ba7578c9e9542ce3641eefb71ae775cc4ad96a41
 
 * Modify `xtb\src\mctc\mctc_init.f90`
 
@@ -84,5 +105,12 @@ Here must use `-G "NMake Makefiles"`, because default `-G "Visual Studio 16 2019
 
 # Release
 Pack relevant dll, we can use it on other Windows computer.
+
+# Usage
+Must add `bin` full path into Path environment variable of windows, and create new variable named `XTBPATH`, value set as path of `\share\xtb`
+For example:
+```
+D:\xtb6.3.2_win64\share\xtb
+```
 
 
