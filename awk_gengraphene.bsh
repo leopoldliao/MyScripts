@@ -12,7 +12,7 @@
 Description() {
     echo -e "
 >>DESCRIPTION:
-    $0 can generate a piece of graphene, the output file is .gro format."
+    $0 can generate a piece of graphene, the output file is .gro/.xyz format."
 }
 
 Usage() {
