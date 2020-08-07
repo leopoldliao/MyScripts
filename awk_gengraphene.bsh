@@ -4,14 +4,14 @@
 ############################################################################
 #                     Author : Written by Yujie Liu                        #
 #                        Email : 1051690424@qq.com                         #
-#                             Version : 1.1                                #
-#                           Date : 2020.04.01                              #
+#                             Version : 1.2                                #
+#                           Date : 2020.08.07                              #
 ############################################################################
 
 #=========================HELP INFORMATION==============================#
 Description() {
     echo -e "
->>DESCRIPTION: 
+>>DESCRIPTION:
     $0 can generate a piece of graphene, the output file is .gro format."
 }
 
@@ -21,12 +21,14 @@ Usage() {
         -h      Show help information
         -lx     Value [nm], the length of graphene (default: 10 nm)
         -ly     Value [nm], the width of graphene (default: 10 nm)
-        -o      Output, .gro file (default: graphene.gro) 
+        -o      Output, .gro file (default: graphene.gro)
+        -xyz    Bool [y/n], if output .xyz file (default: y)
     "
 }
 
 lx=10
 ly=10
+xyz="y"
 
 options=($@); N=${#options[@]}
 for((i = 0; i < N; i++));do
@@ -35,6 +37,7 @@ for((i = 0; i < N; i++));do
     [[ $arg =~ -lx ]]  && { lx=${options[$j]}; }
     [[ $arg =~ -ly ]]  && { ly=${options[$j]}; }
     [[ $arg =~ -o ]]  && { outputfile=${options[$j]}; }
+    [[ $arg =~ -xyz ]]  && { xyz=${options[$j]}; }
 done
 
 if [[ -z ${outputfile} ]] ;then
@@ -44,18 +47,20 @@ fi
 awk '
     BEGIN {
         lx = "'$lx'" + 0; ly = "'$ly'" + 0; outputfile = "'$outputfile'"
+        xyz = "'$xyz'"
         Print_parameters()
         Graphene(ly, lx)
         print outputfile " has been generated successfully！"
+        if(xyz == "y") {print xyzoutput " has been generated successfully！"}
     }
-    
+
     function Print_parameters() {
         print "You are using the following parameters:"
         print "\tthe length is around: ", int(lx), "nm"
         print "\tthe width  is around: ", int(ly), "nm"
     }
-    
-    function Graphene(n, m) { 
+
+    function Graphene(n, m) {
         cabond = 0.1418; index1 = -1
         m = int((m/cabond+1)/1.5)
         n = int(n/(0.866*cabond))
@@ -92,7 +97,7 @@ awk '
                 }
             }
         }
-        
+
         t1 = 0
         for(i = 0; i < int(length(atomsxyz)/5); i++) { # mol is 9
             for(j = 0; j < 5; j++) { # mol is 9
@@ -101,15 +106,25 @@ awk '
             }
         }
         #===========================PRINT GRO FILE======================#
+        if(xyz == "y") {
+            txt = outputfile; sub(".gro", "", txt)
+            xyzoutput = txt".xyz"
+            print int(length(atomsxyz)/5) > xyzoutput
+            print "MOL" >> xyzoutput
+        }
         print "MOL" > outputfile
         print int(length(atomsxyz)/5) >> outputfile
         for(i = 0; i < int(length(atomsxyz)/5); i++) {
             printf("%5d%-5s%5s%5d%8.3f%8.3f%8.3f\n",
                     1, "GRA", lyatomsdata[i, 1], lyatomsdata[i, 0]%100000, \
                     lyatomsdata[i, 2], lyatomsdata[i, 3], lyatomsdata[i, 4]) >> outputfile
+            if(xyz == "y") {
+                printf("%4s %12.6f %12.6f %12.6f\n", lyatomsdata[i, 1], lyatomsdata[i, 2]*10, \
+                        lyatomsdata[i, 3]*10, lyatomsdata[i, 4]*10) >> xyzoutput
+            }
         }
         #This is periodic box in x and y axis
-        printf("%12.4f %12.4f %12.4f\n", 
+        printf("%12.4f %12.4f %12.4f\n",
                 m*1.5*cabond, n*cabond*0.866, 0.2) >> outputfile
     }
 '
