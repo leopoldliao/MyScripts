@@ -1,0 +1,75 @@
+#!/bin/bash
+Usage() {
+    echo "
+    Usage: $0  options
+        -h    Show help information
+        -i    Input trajectory pdb/gro/xyz file
+"
+}
+MOL=
+
+[[ $# -lt 1 ]] && { Usage; exit 1; }
+options=($@); N=${#options[@]}
+for((i = 0; i < N; i++));do
+    arg=${options[$i]}; j=$((i+1))
+    [[ $arg =~ -h$ ]] && { Usage; exit 2; }
+    [[ $arg =~ -i  ]] && { MOL=${options[$j]}; }
+done
+
+if [[ ! -e $MOL ]]; then
+    echo -e "\nInput file $2 not found!"
+    Usage
+    exit 3
+fi
+awk '
+    END {
+        suffix = FILENAME; sub(/.+\./, "", suffix);
+        switch(suffix) {
+            case "pdb":
+                i = 1
+                while(getline<FILENAME>0) {
+                    if($0!~/END/) {
+                        print > i".pdb"
+                    }
+                    else {
+                        print "Writing"" "i" ""frame"
+                        print "END" >> i".pdb"
+                        i++
+                    }
+                }
+                close(FILENAME)
+                break
+            case "gro":
+                i = 1
+                while(getline<FILENAME>0) {
+                    print "Writing"" "i" ""frame"
+                    print > i".gro"; getline Natoms < FILENAME; print Natoms >> i".gro"
+                    for(j = 1; j <= Natoms+0; j++) {
+                        getline < FILENAME
+                        print >> i".gro"
+                    }
+                    getline < FILENAME; print >> i".gro"
+                    i++
+                }
+                close(FILENAME)
+                break
+            case "xyz":
+                i = 1
+                while(getline<FILENAME>0) {
+                    Natoms = $1
+                    getline tips < FILENAME;
+                    print "Writing"" "i" ""frame"
+                    print Natoms > i".xyz"; print tips >> i".xyz";
+                    for(j = 1; j <= Natoms+0; j++) {
+                        getline < FILENAME
+                        print >> i".xyz"
+                    }
+                    i++
+                }
+                close(FILENAME)
+                break;
+            default:
+                break
+        }
+    }
+' $MOL
