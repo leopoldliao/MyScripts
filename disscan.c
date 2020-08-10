@@ -18,7 +18,24 @@ void VectorNormal(double *x[3], const int a, const int b, double v[3]) {
     v[2] /= dist;
 }
 
+static void Header() {
+    printf("\n\t**************************************************************\n");
+    printf("\t*                     DISTANCE SCAN PROGRAM                  *\n");
+    printf("\t*                      AUTHOR: Yujie Liu                     *\n");
+    printf("\t*                    First release: 2020.08                  *\n");
+    printf("\t*                    Last update  : 2020.08                  *\n");
+    printf("\t**************************************************************\n\n");
+    printf(">>> DESCRIPTION:\n");
+    printf("\tThis program can scan dimer distance by using given two atom index\n");
+    printf("\tof monomer, also can use same index of one monomer, but you need\n");
+    printf("\tindicate which axis you want scan!\n");
+    printf("\n\tOriginal reference can be found http://sobereva.com/469\n");
+    printf("\t===================================================================\n\n\n");
+}
+
 int main(int argc, char *argv[]) {
+    Header();
+    
     FILE *fp = NULL;
     char fname[256];
     char buff[256];
@@ -50,7 +67,7 @@ int main(int argc, char *argv[]) {
     //Obtain input parameters
     int Atom1, Atom2, step;
     double Initdist, delta;
-    printf("\nInput index of an atom in monomer 1 and index of an atom in monomer 2, their distance will be scanned. e.g. 3 6\n");
+    printf("\nInput index of an atom in monomer 1 and index of an atom in monomer 2, or two same index of one monomer, their distance will be scanned. e.g. 3 6\n");
     scanf("%d %d", &Atom1, &Atom2);
     Atom1--; Atom2--; //for array
     
@@ -66,7 +83,33 @@ int main(int argc, char *argv[]) {
     //Processing
     double Ordist, dd, normal[3];
     Ordist = Dist(x, Atom1, Atom2);
-    VectorNormal(x, Atom1, Atom2, normal);
+    if(Ordist < 1E-6) {
+        printf("\nNOTE: Your given two atom coordinate is same\n");
+        printf("You need indicate which axis you want scan!\n");
+        loop:printf("Input x, y, or z:\n");
+        char axis[5];
+        int type = 4;
+        scanf("%s", axis);
+        if(strstr(axis, "x")) {type = 1;}
+        else if(strstr(axis, "y")) {type = 2;}
+        else if(strstr(axis, "z")) {type = 3;}
+
+        switch(type) {
+            case 1:
+                normal[0] = 1; normal[1] = normal[2] = 0;
+                break;
+            case 2:
+                normal[1] = 1; normal[0] = normal[2] = 0;
+                break;
+            case 3:
+                normal[2] = 1; normal[0] = normal[1] = 0;
+                break;
+            default:
+                goto loop;
+                break;
+        }
+    }
+    else {VectorNormal(x, Atom1, Atom2, normal);}
     
     double temp_x, temp_y, temp_z, l;
     FILE *fout = NULL;
