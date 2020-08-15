@@ -4,34 +4,44 @@
 /*
     A simple C program for extracing atom charge information from GROMACS
     .tpr file. 
-    NOTE: 
-        1. Need install GROMACS, for using "gmx dump" command.
-    Author: Liu Yujie
 */
 
+typedef struct {
+    char Name[256], Natm[256];
+    int Nmol;
+    char (*Qtam)[256], (*Tatm)[256];
+} t_mol;
+
+void Header();
+
 int main() {
-    char filename[256], command[1024];
-    printf("Please input .tpr file:\n");
+    char filename[256], command[256];
+    Header();
+    
+    printf("Please input .tpr file or a txt file from \"gmx dump\":\n");
     scanf("%s", filename);
-    printf("Please waiting...\n");
-    sprintf(command, "gmx dump -quiet -s %s > dump.txt 2>&1", filename);
-    system(command);
+    printf("\nPlease waiting...\n");
+    if(strstr(filename, ".tpr") != NULL) {
+        sprintf(command, "gmx dump -quiet -s %s > dump.txt 2>&1", filename);
+        system(command);
+    }
 
     FILE *fp;
     char buff[1024];
     int i, j, Ntyp, Imol, tmp, im = 0, num, maximol = 0;
 
-    struct {
-        char Name[256], Natm[256];
-        int Nmol;
-        char (*Qtam)[256], (*Tatm)[256];
-    } mol[100];
-
-    fp = fopen("dump.txt", "r");
+    if(strstr(filename, ".tpr") != NULL) {
+        fp = fopen("dump.txt", "r");
+    }
+    else {
+        fp = fopen(filename, "r");
+    }
     if(fp == NULL) {
-        printf("Can not find dump.txt file");
+        printf("Can not find a txt file\n");
         exit(-1);
     }
+    
+    t_mol mol[100];
     while(fgets(buff, sizeof(buff), fp) != NULL) {
         if(strstr(buff, "#molblock") != NULL) {
             sscanf(buff, "%*s%*s%d", &Ntyp);
@@ -96,7 +106,25 @@ int main() {
         free(mol[i].Tatm);
     }
     
+    printf("\n--> Done! charge.txt file has been generated.\n");
+    
+#ifdef _WIN32
     printf("Please press enter to exit!\n");
     system("PAUSE");
+#endif
+
     return 0;
+}
+
+void Header() {
+    printf("\n\t**************************************************************\n");
+    printf("\t*                  Read Atomic Charge Program                *\n");
+    printf("\t*                      Author: Yujie Liu                     *\n");
+    printf("\t*                    First release: 2019.08.01               *\n");
+    printf("\t*                    Last   update: 2020.08.15               *\n");
+    printf("\t**************************************************************\n\n");
+    printf(">>> DESCRIPTION:\n");
+    printf("\tThis program can read atomic charge from .tpr file (Need install gromacs)\n");
+    printf("\tor txt file from \"gmx dump\", a charge.txt file will be generated.\n");
+    printf("\t===================================================================\n\n\n");
 }
