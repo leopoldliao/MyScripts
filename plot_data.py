@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
 # A simple code for plotting out.dat from my _xpm2txt program
 
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
