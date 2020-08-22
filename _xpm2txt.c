@@ -162,7 +162,8 @@ int main(int argc, char *argv[])
     double value;
     FILE *fout = NULL;
     fout = fopen("out.dat", "w");
-    fprintf(fout, "#%10s %12s %12s\n", fesxpm->label_x, fesxpm->label_y, fesxpm->legend);
+    fprintf(fout, "#%10s %12s %12s      grid: %4d * %4d\n", fesxpm->label_x, 
+                  fesxpm->label_y, fesxpm->legend, fesxpm->nres, fesxpm->nframe);
     
     for(int i = 0; i < fesxpm->nres; i++) 
     {
